@@ -57,6 +57,27 @@ export interface FormatUtcDateTimeOptions {
   zone?: boolean;
 }
 
+/** Trailing UTC offset as ECMA-262 accepts it on a date-time string: `Z` or `±HH[:MM]`. */
+const UTC_OFFSET_SUFFIX = /(?:Z|[+-]\d{2}:?\d{2})$/i;
+
+/**
+ * Parse a timestamp to epoch milliseconds, reading an offset-less date-time as UTC.
+ *
+ * Alert APIs serialize UTC `LocalDateTime` values without an offset, and ECMA-262 reads such a
+ * date-time as browser-local time — which shifts the instant by the viewer's UTC offset. Pinning
+ * the offset-less form to UTC keeps a comparison against `Date.now()` asking the same question in
+ * every browser timezone.
+ *
+ * @return the instant, or `NaN` when the value is absent or unparseable.
+ */
+export function parseUtcDateTime(date: string | Date | null | undefined): number {
+  if (date === null || date === undefined) return Number.NaN;
+  if (typeof date !== 'string') return date.getTime();
+  const value = date.trim();
+  if (!value) return Number.NaN;
+  return Date.parse(UTC_OFFSET_SUFFIX.test(value) ? value : `${value}Z`);
+}
+
 /**
  * Format a UTC timestamp for alert events in the viewer's timezone. Alert APIs
  * serialize UTC LocalDateTime values without an offset, so normal Date parsing
@@ -67,12 +88,8 @@ export function formatUtcDateTime(
   timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
   options: FormatUtcDateTimeOptions = {},
 ): string {
-  if (date === null || date === undefined || (typeof date === 'string' && !date.trim())) return '-';
-  const utcDate =
-    typeof date === 'string' && !/(?:Z|[+-]\d{2}:?\d{2})$/i.test(date.trim())
-      ? new Date(`${date}Z`)
-      : new Date(date);
-  if (Number.isNaN(utcDate.getTime())) return '-';
+  const timestamp = parseUtcDateTime(date);
+  if (!Number.isFinite(timestamp)) return '-';
 
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
@@ -84,7 +101,7 @@ export function formatUtcDateTime(
     second: '2-digit',
     hourCycle: 'h23',
     timeZoneName: 'short',
-  }).formatToParts(utcDate);
+  }).formatToParts(timestamp);
   const value = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((part) => part.type === type)?.value;
   const year = value('year');

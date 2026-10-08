@@ -11,6 +11,7 @@ import {
   formatRelativeTime,
   formatTimeOfDay,
   formatTimeMs,
+  parseUtcDateTime,
 } from './format';
 
 describe('formatBytes', () => {
@@ -96,6 +97,27 @@ describe('formatBytes', () => {
     expect(formatRelativeTime(now - 5 * 60_000, 'en', en, now)).toBe('5 min ago');
     expect(formatRelativeTime(now - 2 * 60 * 60_000, 'zh', zh, now)).toBe('13:30');
     expect(formatTimeOfDay(now)).toBe('15:30');
+  });
+});
+
+describe('parseUtcDateTime', () => {
+  it('reads an offset-less date-time as UTC rather than browser-local time', () => {
+    expect(parseUtcDateTime('2026-08-23T10:35:38.590731')).toBe(
+      Date.parse('2026-08-23T10:35:38.590731Z'),
+    );
+  });
+
+  it('keeps the offset a timestamp already carries', () => {
+    expect(parseUtcDateTime('2026-08-23T10:35:38Z')).toBe(Date.parse('2026-08-23T10:35:38Z'));
+    expect(parseUtcDateTime('2026-08-23T18:35:38+08:00')).toBe(Date.parse('2026-08-23T10:35:38Z'));
+  });
+
+  it('returns NaN for absent and unparseable values', () => {
+    expect(parseUtcDateTime(null)).toBeNaN();
+    expect(parseUtcDateTime(undefined)).toBeNaN();
+    expect(parseUtcDateTime('   ')).toBeNaN();
+    expect(parseUtcDateTime('not-a-date')).toBeNaN();
+    expect(parseUtcDateTime(new Date(Number.NaN))).toBeNaN();
   });
 });
 

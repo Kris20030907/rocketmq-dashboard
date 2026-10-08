@@ -65,7 +65,7 @@ import {
 } from '../../services/opsService';
 import { attachThresholdUnit, normalizeDuration, normalizeMetric } from './alertRulePayload';
 import { tableScrollX } from '../../utils/table';
-import { formatUtcDateTime } from '../../utils/format';
+import { formatUtcDateTime, parseUtcDateTime } from '../../utils/format';
 import { listInstances } from '../../services/instanceService';
 import type { Instance } from '../../api/instance';
 import { downloadBlob } from '../../utils/download';
@@ -416,7 +416,7 @@ const AlertsPage = ({ domain = 'CLUSTER' }: AlertsPageProps) => {
   // eslint-disable-next-line react-hooks/purity
   const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
   const triggered24h = rules.filter(
-    (r) => r.lastTriggered && new Date(r.lastTriggered).getTime() > dayAgo,
+    (r) => r.lastTriggered && parseUtcDateTime(r.lastTriggered) > dayAgo,
   ).length;
 
   const openCreateModal = () => {
